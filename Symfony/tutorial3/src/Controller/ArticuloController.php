@@ -1,111 +1,76 @@
 <?php
+
 namespace App\Controller;
+
 use App\Entity\Articulo;
-use Doctrine\Persistence\ManagerRegistry as PersistenceManagerRegistry;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Form\ArticuloType;
+use App\Repository\ArticuloRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use App\Form\ArticuloFormType;
-use Twig\Environment;
-class ArticuloController extends AbstractController{
 
-    /** 
-    * @Route("/articulo/index_form")
-    */
+#[Route('/articulo')]
+class ArticuloController extends AbstractController
+{
+    #[Route('/', name: 'app_articulo_index', methods: ['GET'])]
+    public function index(ArticuloRepository $articuloRepository): Response
+    {
+        return $this->render('articulo/index.html.twig', [
+            'articulos' => $articuloRepository->findAll(),
+        ]);
+    }
 
-    public function index_form(Environment $twig, Request $request, EntityManagerInterface $entityManager){
-        
+    #[Route('/new', name: 'app_articulo_new', methods: ['GET', 'POST'])]
+    public function new(Request $request, ArticuloRepository $articuloRepository): Response
+    {
         $articulo = new Articulo();
-        
-        $form = $this->createForm(ArticuloFormType::class, $articulo);
-
+        $form = $this->createForm(ArticuloType::class, $articulo);
         $form->handleRequest($request);
 
-        if($form->isSubmitted() && $form->isValid()){
-            $entityManager->persist($articulo);
-            $entityManager->flush();
-
-            return new Response('Articulo numero: '. $articulo->getId() . ' creado.');
+        if ($form->isSubmitted() && $form->isValid()) {
+            $articuloRepository->add($articulo);
+            return $this->redirectToRoute('app_articulo_index', [], Response::HTTP_SEE_OTHER);
         }
 
-        return new Response($twig->render('articulo/form.html.twig', [
-            'articulo_form' => $form->createView()
-        ]));
-
-
-    }
-
-    /** 
-    * @Route("/articulo/index_articulos")
-    */
-
-    public function index_articulos(PersistenceManagerRegistry $doctrine): Response{
-
-        $articulos = $doctrine->getRepository(articulo::class)->findAll();
-        return $this->render('articulo/index.html.twig', [
-            'articulos' => $articulos
+        return $this->renderForm('articulo/new.html.twig', [
+            'articulo' => $articulo,
+            'form' => $form,
         ]);
-
     }
 
+    #[Route('/{id}', name: 'app_articulo_show', methods: ['GET'])]
+    public function show(Articulo $articulo): Response
+    {
+        return $this->render('articulo/show.html.twig', [
+            'articulo' => $articulo,
+        ]);
+    }
 
+    #[Route('/{id}/edit', name: 'app_articulo_edit', methods: ['GET', 'POST'])]
+    public function edit(Request $request, Articulo $articulo, ArticuloRepository $articuloRepository): Response
+    {
+        $form = $this->createForm(ArticuloType::class, $articulo);
+        $form->handleRequest($request);
 
-    /** 
-    * @Route("/articulo/{nombre}", name="crea_articulo")
-    */
-    //CREATE
-    
-    // public function crearArticulo(string $nombre, PersistenceManagerRegistry $doctrine): Response{
-    //     $entityManager = $doctrine->getManager();
+        if ($form->isSubmitted() && $form->isValid()) {
+            $articuloRepository->add($articulo);
+            return $this->redirectToRoute('app_articulo_index', [], Response::HTTP_SEE_OTHER);
+        }
 
-    //     $articulo = new articulo();
-    //     $articulo->setTitulo($titulo);
-    //     $articulo->setPrice(1999);
+        return $this->renderForm('articulo/edit.html.twig', [
+            'articulo' => $articulo,
+            'form' => $form,
+        ]);
+    }
 
-    //     $entityManager->persist($articulo);
+    #[Route('/{id}', name: 'app_articulo_delete', methods: ['POST'])]
+    public function delete(Request $request, Articulo $articulo, ArticuloRepository $articuloRepository): Response
+    {
+        if ($this->isCsrfTokenValid('delete'.$articulo->getId(), $request->request->get('_token'))) {
+            $articuloRepository->remove($articulo);
+        }
 
-    //     $entityManager->flush();
-
-    //     return new Response('Se ha creado nuevo articulo '.$articulo->getId());
-    // }
-    // //SHOW
-    // /** 
-    // * @Route("/articulo/{id}", name="ensenya_articulo")
-    // */
-    // //CREATE
-    
-    // public function ensenyaArticulo(int $id, PersistenceManagerRegistry $doctrine): Response{
-    //     $articulo = $doctrine->getRepository(articulo::class)->find($id);
-    //     if (!$articulo) {
-    //         throw $this->createNotFoundException ('No articulo found for id '.$id);
-    //         }
-    //     return new Response ('Check out this great articulo: '.$articulo->getName());
-    // }
-    // //MODIFY
-    // //SHOW
-    // /** 
-    // * @Route("/articulo/{id}", name="cambia_articulo")
-    // */
-    // public function cambia_articulo(int $id, PersistenceManagerRegistry $doctrine): Response{
-    //     $entityManager = $doctrine->getManager();
-    //     $articulo = $entityManager->getRepository(articulo::class)->find($id);
-
-    //     if(!$articulo){
-    //         throw $this->createNotFoundException(
-    //             'No articulo found for: '. $id
-    //         );
-    //     }
-    //     $articulo->setName('New articulo name!');
-    //     $entityManager->flush();
-
-    //     return $this->redirectToRoute('articulo_show', [
-    //         'id' => $articulo->getId()
-    //     ]);
-    // }
-    
-    
+        return $this->redirectToRoute('app_articulo_index', [], Response::HTTP_SEE_OTHER);
+    }
 }
-
-?>
